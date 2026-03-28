@@ -25,7 +25,7 @@ function SignupPage() {
   return (
     <main className="auth-wrapper">
       <form className="card card-glow auth-card" onSubmit={handleSubmit}>
-        <h2>Create CodeViva Account</h2>
+        <h2>Create interviewX Account</h2>
         <input
           placeholder="Username"
           value={form.username}

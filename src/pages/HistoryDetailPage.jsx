@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getExamById } from '../services/examService'
+import { downloadExamReportPdf } from '../utils/examReportPdf'
 
 function HistoryDetailPage() {
   const { id } = useParams()
@@ -79,6 +80,18 @@ function HistoryDetailPage() {
           ))
         )}
       </section>
+
+      {exam.status === 'completed' ? (
+        <div className="history-detail-actions">
+          <button
+            type="button"
+            className="btn-primary history-pdf-btn"
+            onClick={() => downloadExamReportPdf(exam)}
+          >
+            Download Result (PDF)
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }

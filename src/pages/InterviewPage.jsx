@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import CodeEditor from '../components/CodeEditor'
 import { useExamLockdown } from '../hooks/useExamLockdown'
-import { appendExamResponse, completeExam, createExam } from '../services/examService'
+import { appendExamResponse, completeExam, createExam, getExamById } from '../services/examService'
 import { evaluateAnswer, startInterviewSession } from '../services/interviewService'
+import { downloadExamReportPdf } from '../utils/examReportPdf'
 
 const LEVELS = ['Easy', 'Medium', 'Hard']
 const LANGUAGES = ['Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'C#', 'Go']
@@ -158,6 +159,28 @@ function InterviewPage() {
     setAnswer(currentQuestion?.type === 'code' ? currentQuestion.starterCode || '' : '')
   }
 
+  const handleDownloadPdf = async () => {
+    if (!examId) return
+    try {
+      const full = await getExamById(examId)
+      downloadExamReportPdf({
+        ...full,
+        language,
+        level,
+        sessionId,
+        score,
+        correctCount,
+        incorrectCount,
+        status: 'completed',
+        completedAt: new Date().toISOString(),
+        strengths: score >= 20 ? ['Concept clarity', 'Problem solving'] : ['Basics', 'Persistence'],
+        weaknesses: score < 20 ? ['Edge cases', 'Precision'] : ['Advanced patterns', 'Speed'],
+      })
+    } catch {
+      /* ignore */
+    }
+  }
+
   const handleFinish = async () => {
     const finalResult = {
       score,
@@ -214,9 +237,14 @@ function InterviewPage() {
             {language} · {level} · Score: <strong>{score}</strong>
           </p>
           {saveError ? <p className="error-text">{saveError}</p> : null}
-          <button type="button" className="btn-primary" onClick={() => void handleFinish()}>
-            Save &amp; view in history
-          </button>
+          <div className="finish-actions">
+            <button type="button" className="btn-secondary" onClick={() => void handleDownloadPdf()}>
+              Download Result (PDF)
+            </button>
+            <button type="button" className="btn-primary" onClick={() => void handleFinish()}>
+              Save &amp; view in history
+            </button>
+          </div>
         </section>
       </main>
     )

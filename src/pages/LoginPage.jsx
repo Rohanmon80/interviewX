@@ -25,7 +25,7 @@ function LoginPage() {
   return (
     <main className="auth-wrapper">
       <form className="card card-glow auth-card" onSubmit={handleSubmit}>
-        <h2>Login to CodeViva</h2>
+        <h2>Login to interviewX</h2>
         <input
           placeholder="Username"
           value={form.username}
