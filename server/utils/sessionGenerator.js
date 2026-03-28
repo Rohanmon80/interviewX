@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { featherlessComplete, isFeatherlessConfigured } from './featherlessClient.js'
 import { questionBank, LEVELS } from './questionBank.js'
 
 function shuffle(arr) {
@@ -14,27 +14,28 @@ function randomId() {
   return `q-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`
 }
 
-async function tryGeminiExtras(level, count) {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.SECRET_KEY
-  if (!apiKey || count < 1) return []
+async function tryFeatherlessExtras(level, count) {
+  if (!isFeatherlessConfigured() || count < 1) return []
 
   try {
-    const client = new GoogleGenerativeAI(apiKey)
-    const model = client.getGenerativeModel({ model: 'gemini-1.5-flash' })
-    const prompt = `Generate ${count} short Python interview ${level} difficulty questions.
+    const userPrompt = `Generate ${count} short Python interview ${level} difficulty questions.
 Mix conceptual (type "text") and small coding (type "code") tasks.
 Return ONLY valid JSON array, no markdown. Each item:
 {"type":"text"|"code","prompt":"string","expectedKeywords":["k1","k2"] OR for code use "codeEvaluator":"sum_natural"|"is_even"|"reverse_string" and "starterCode":"..."}
 For code questions pick codeEvaluator only from: sum_natural, is_even, reverse_string, factorial, max_in_list, count_vowels, fibonacci, binary_search — match prompt to evaluator.`
-    const out = await model.generateContent(prompt)
-    const text = out.response.text().replace(/```json|```/g, '').trim()
-    const parsed = JSON.parse(text)
+    const text = await featherlessComplete(
+      userPrompt,
+      'You output only valid JSON arrays when asked. No explanation, no code fences.',
+    )
+    if (!text) return []
+    const cleaned = text.replace(/```json|```/g, '').trim()
+    const parsed = JSON.parse(cleaned)
     if (!Array.isArray(parsed)) return []
     return parsed.slice(0, count).map((item, i) => ({
       ...item,
       bankId: `ai-${level}-${i}`,
       difficulty: level,
-      source: 'gemini',
+      source: 'featherless',
       prompt: item.prompt,
       type: item.type === 'code' ? 'code' : 'text',
       expectedKeywords: item.expectedKeywords || ['concept'],
@@ -57,7 +58,7 @@ export async function buildSession(level, options = {}) {
 
   let extras = []
   if (useAiExtras) {
-    extras = await tryGeminiExtras(level, 1)
+    extras = await tryFeatherlessExtras(level, 1)
   }
 
   const merged = shuffle([...picked, ...extras]).slice(0, questionCount)

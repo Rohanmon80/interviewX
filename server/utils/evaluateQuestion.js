@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { featherlessComplete, isFeatherlessConfigured } from './featherlessClient.js'
 import { evaluateCodeByEvaluator, evaluateTextKeywords } from './codeEvaluators.js'
 
 export async function evaluateQuestionPayload(question, { answer, code }) {
@@ -24,25 +24,27 @@ export async function evaluateQuestionPayload(question, { answer, code }) {
     return { correct: false, output: '', feedback: 'Answer is required.' }
   }
 
-  const apiKey = process.env.GEMINI_API_KEY || process.env.SECRET_KEY
   const keywords = question.expectedKeywords || []
 
-  if (apiKey && keywords.length > 0) {
+  if (isFeatherlessConfigured() && keywords.length > 0) {
     try {
-      const client = new GoogleGenerativeAI(apiKey)
-      const model = client.getGenerativeModel({ model: 'gemini-1.5-flash' })
-      const prompt = `Grade this interview answer briefly.
+      const userPrompt = `Grade this interview answer briefly.
 Question: ${question.prompt}
 Expected concepts (keywords): ${keywords.join(', ')}
 Candidate answer: ${textAnswer}
 Return ONLY valid JSON: {"correct":true/false,"feedback":"short string"}`
-      const output = await model.generateContent(prompt)
-      const raw = output.response.text().replace(/```json|```/g, '').trim()
-      const parsed = JSON.parse(raw)
-      return {
-        correct: Boolean(parsed.correct),
-        output: '',
-        feedback: parsed.feedback || 'Graded.',
+      const raw = await featherlessComplete(
+        userPrompt,
+        'You are a concise technical interviewer. When asked for JSON, output only valid JSON, no markdown.',
+      )
+      if (raw) {
+        const cleaned = raw.replace(/```json|```/g, '').trim()
+        const parsed = JSON.parse(cleaned)
+        return {
+          correct: Boolean(parsed.correct),
+          output: '',
+          feedback: parsed.feedback || 'Graded.',
+        }
       }
     } catch {
       // fall through

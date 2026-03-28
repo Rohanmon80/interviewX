@@ -1,6 +1,7 @@
 import express from 'express'
 import { requireAuth } from '../middleware/authMiddleware.js'
 import ExamAttempt from '../models/ExamAttempt.js'
+import { buildDisplayResponses } from '../utils/examDisplayResponses.js'
 
 const router = express.Router()
 
@@ -44,7 +45,7 @@ router.patch('/:id/response', requireAuth, async (req, res) => {
     if (!questionId || !prompt || !questionType) {
       return res.status(400).json({ message: 'questionId, prompt, questionType required' })
     }
-    exam.responses.push({
+    const entry = {
       questionId,
       prompt,
       questionType,
@@ -52,9 +53,16 @@ router.patch('/:id/response', requireAuth, async (req, res) => {
       correct: Boolean(correct),
       feedback: feedback ?? '',
       submittedAt: new Date(),
-    })
+    }
+    const existingIdx = exam.responses.findIndex((r) => r.questionId === questionId)
+    if (existingIdx >= 0) {
+      exam.responses[existingIdx] = entry
+    } else {
+      exam.responses.push(entry)
+    }
     await exam.save()
-    res.json(exam)
+    const plain = exam.toObject()
+    res.json({ ...plain, responses: buildDisplayResponses(plain) })
   } catch (err) {
     res.status(400).json({ message: err.message || 'Could not save response' })
   }
@@ -73,7 +81,8 @@ router.patch('/:id/complete', requireAuth, async (req, res) => {
     exam.weaknesses = weaknesses || []
     exam.completedAt = new Date()
     await exam.save()
-    res.json(exam)
+    const plain = exam.toObject()
+    res.json({ ...plain, responses: buildDisplayResponses(plain) })
   } catch (err) {
     res.status(400).json({ message: err.message || 'Could not complete exam' })
   }
@@ -91,7 +100,10 @@ router.get('/:id', requireAuth, async (req, res) => {
   const exam = await ExamAttempt.findById(req.params.id).lean()
   if (!exam) return res.status(404).json({ message: 'Not found' })
   if (exam.userId.toString() !== req.user.id) return res.status(403).json({ message: 'Forbidden' })
-  res.json(exam)
+  res.json({
+    ...exam,
+    responses: buildDisplayResponses(exam),
+  })
 })
 
 export default router

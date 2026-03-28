@@ -135,7 +135,7 @@ function InterviewPage() {
   const handleSkip = async () => {
     if (!currentQuestion || !examId) {
       setIncorrectCount((prev) => prev + 1)
-      handleNext()
+      setQuestionIndex((prev) => prev + 1)
       return
     }
     try {
@@ -151,7 +151,7 @@ function InterviewPage() {
       /* still advance */
     }
     setIncorrectCount((prev) => prev + 1)
-    handleNext()
+    setQuestionIndex((prev) => prev + 1)
   }
 
   const handleRetry = () => {
